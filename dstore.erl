@@ -1,6 +1,8 @@
 -module(dstore).
 
--export([start/0, start/1, lookup/2, insert/3, stop/1, init/0, init/1, peers/1, data/1]).
+-export([start/0, start/1, stop/1, init/0, init/1]).
+-export([lookup/2, insert/3]).
+-export([peers/1, data/1]).
 
 %%
 %% Client Functions 
@@ -22,9 +24,17 @@ insert(Node, Key, Data) ->
 	{dstore, Node} ! {client, self(), insert, Key, Data},
 	receive {res, Result} -> Result end.
 
+%% @doc
+%% Gets the list of connected peers at node Node
+%% @end
+
 peers(Node) ->
 	{dstore, Node} ! {debug, self(), peers},
 	receive {res, Result} -> Result end.
+
+%% @doc
+%% Dets the data store at Node
+%% @end
 
 data(Node) ->
 	{dstore, Node} ! {debug, self(), data},
@@ -42,12 +52,19 @@ init() ->
 	io:format("Started dstore ~w - ~s~n", [self(), node()]),
 	loop([],[]).
 
+%% @doc
+%% Connects to a node that is already known. This allows different dstore instances to
+%% share data across nodes
+%% @end
 init(KnownNode) ->
 	io:format("Started dstore ~w - ~s~n", [self(), node()]),
 	{dstore, KnownNode} ! {peer, self(), register},
 	receive {res, Sender, OtherPids} -> 
 			io:format("received from ~w other Pids ~w~n", [Sender, OtherPids]),
 			loop([Sender|OtherPids], []) end.
+
+%% @doc Receive-Evaluate Loop to allow for distribution
+%% @end
 
 -spec loop(Peers :: [pid()], Data :: [{any(), any()}]) -> none().
 
